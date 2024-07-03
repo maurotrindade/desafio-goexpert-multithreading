@@ -1,14 +1,36 @@
 package main
 
 import (
-	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"sync"
-	"time"
 )
 
-func call(url string, wg *sync.WaitGroup, t int) {
-	time.Sleep(time.Duration(t) * time.Millisecond)
-	fmt.Print(url)
+const (
+	cep              = "35675-000"
+	brasilapiAddress = "https://brasilapi.com.br/api/cep/v1/" + cep
+	viacepAdress     = "http://viacep.com.br/ws/" + cep + "/json/"
+)
+
+func call(url string, wg *sync.WaitGroup) {
+	var client http.Client
+	res, err := client.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bodyString := string(body)
+		log.Print(bodyString)
+	} else {
+		log.Printf("Erro: status %d", res.StatusCode)
+	}
 	wg.Done()
 }
 
@@ -17,6 +39,6 @@ func main() {
 	waitgroup.Add(1)
 	defer waitgroup.Wait()
 
-	go call("primus.com", &waitgroup, 2)
-	go call("secundus.com", &waitgroup, 3)
+	go call(brasilapiAddress, &waitgroup)
+	go call(viacepAdress, &waitgroup)
 }
