@@ -4,7 +4,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
+	"time"
 )
 
 const (
@@ -13,8 +13,10 @@ const (
 	viacepAdress     = "http://viacep.com.br/ws/" + cep + "/json/"
 )
 
-func call(url string, wg *sync.WaitGroup) {
+func call(url string, ch chan string) {
 	var client http.Client
+	var body []byte
+
 	res, err := client.Get(url)
 	if err != nil {
 		panic(err)
@@ -22,23 +24,36 @@ func call(url string, wg *sync.WaitGroup) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		body, err := io.ReadAll(res.Body)
+		body, err = io.ReadAll(res.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
-		bodyString := string(body)
-		log.Print(bodyString)
 	} else {
 		log.Printf("Erro: status %d", res.StatusCode)
+		return
 	}
-	wg.Done()
+	ch <- string(body)
+}
+
+func printResult(bodyStr, url string) {
+	log.Println("API utilizada: " + url)
+	log.Println("Resposta:")
+	log.Println(bodyStr)
 }
 
 func main() {
-	waitgroup := sync.WaitGroup{}
-	waitgroup.Add(1)
-	defer waitgroup.Wait()
+	channelBrasilApi := make(chan string)
+	channelViacep := make(chan string)
 
-	go call(brasilapiAddress, &waitgroup)
-	go call(viacepAdress, &waitgroup)
+	go call(brasilapiAddress, channelBrasilApi)
+	go call(viacepAdress, channelViacep)
+
+	select {
+	case msg := <-channelBrasilApi:
+		printResult(msg, brasilapiAddress)
+	case msg := <-channelViacep:
+		printResult(msg, viacepAdress)
+	case <-time.After(1 * time.Second):
+		println("Error: timeout")
+	}
 }
