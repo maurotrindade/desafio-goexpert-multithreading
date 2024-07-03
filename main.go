@@ -9,7 +9,7 @@ import (
 
 const (
 	cep              = "35675-000"
-	brasilapiAddress = "https://brasilapi.com.br/api/cep/v1/" + cep
+	brasilApiAddress = "https://brasilapi.com.br/api/cep/v1/" + cep
 	viacepAdress     = "http://viacep.com.br/ws/" + cep + "/json/"
 )
 
@@ -45,12 +45,12 @@ func main() {
 	channelBrasilApi := make(chan string)
 	channelViacep := make(chan string)
 
-	go call(brasilapiAddress, channelBrasilApi)
+	go call(brasilApiAddress, channelBrasilApi)
 	go call(viacepAdress, channelViacep)
 
 	select {
 	case msg := <-channelBrasilApi:
-		printResult(msg, brasilapiAddress)
+		printResult(msg, brasilApiAddress)
 	case msg := <-channelViacep:
 		printResult(msg, viacepAdress)
 	case <-time.After(1 * time.Second):
